@@ -1,6 +1,6 @@
 // Define pins for the sensors and LED
-const int motionSensorPin = 2; // Interrupt pin for PIR motion sensor
-const int piezoSensorPin = 3; // Interrupt pin for piezo sensor
+const int motionSensorPin = 2; // Pin for PIR motion sensor
+const int piezoSensorPin = 3; // Pin for piezo sensor
 const int ultrasonicTrigPin = 4; // Trig pin for ultrasonic sensor
 const int ultrasonicEchoPin = 5; // Echo pin for ultrasonic sensor
 const int temperatureSensorPin = A1; // Analog pin for temperature sensor
@@ -8,19 +8,14 @@ const int flexSensorPin = A0; // Analog pin for flex sensor
 const int ledPin = 13; // Built-in LED
 
 // Variables to track LED states
-volatile bool motionLedState = false;
-volatile bool piezoLedState = false;
+volatile bool ledState = false;
 
-// ISR for motion sensor
-void handleMotionInterrupt() {
-  motionLedState = !motionLedState; // Toggle motion LED state
-  digitalWrite(ledPin, motionLedState); // Update the LED
-}
-
-// ISR for piezo sensor
-void handlePiezoInterrupt() {
-  piezoLedState = !piezoLedState; // Toggle piezo LED state
-  digitalWrite(ledPin, piezoLedState); // Update the LED
+// ISR for pin change interrupts (handles both motion and piezo sensors)
+ISR(PCINT2_vect) {
+  if (digitalRead(motionSensorPin) == HIGH || digitalRead(piezoSensorPin) == HIGH) {
+    ledState = !ledState; // Toggle LED state
+    digitalWrite(ledPin, ledState); // Update the LED
+  }
 }
 
 // Timer interrupt routine
@@ -49,9 +44,9 @@ void setup() {
   pinMode(ultrasonicEchoPin, INPUT);
   pinMode(ledPin, OUTPUT);
   
-  // Attach interrupts
-  attachInterrupt(digitalPinToInterrupt(motionSensorPin), handleMotionInterrupt, RISING);
-  attachInterrupt(digitalPinToInterrupt(piezoSensorPin), handlePiezoInterrupt, RISING);
+  // Configure PCINT for motion sensor and piezo sensor pins
+  PCICR |= (1 << PCIE2); // Enable PCINT2 interrupt
+  PCMSK2 |= (1 << PCINT18) | (1 << PCINT19); // Enable interrupts for pins 2 and 3
   
   // Timer setup
   cli(); // Disable global interrupts
